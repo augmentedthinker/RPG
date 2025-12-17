@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dungeon Master Journey</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background-color: black; }
+        /* Custom fonts: Pirata One for titles (Edgy/Gothic), Alegreya for text (Literary/Legible) */
+        @import url('https://fonts.googleapis.com/css2?family=Alegreya:wght@400;700&family=Pirata+One&display=swap');
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- Configuration with Narration ---
+        const STORY_STEPS = [
+            {
+                id: 'dm-visible',
+                src: 'DMmagic.png',
+                color: 'from-purple-900 to-indigo-900',
+                title: "The Architect",
+                narration: "Welcome to the table. The air here crackles with unseen energy. I am the Architect, shrouded in the chaos of creation, and it is here that we will forge your legend. Understand that all paths are subject to the whim of fate itself..."
+            },
+            {
+                id: 'the-map',
+                src: 'map.png',
+                color: 'from-amber-900 to-orange-900',
+                title: "The Realm",
+                narration: "As the magical miasma clears, the reality of the realm solidifies: Dragon's Fang Peaks, Whispering Woods, and Dead Man's Mire. You seek Haven's Keep, but remember: even the safest harbor is merely a starting ground."
+            },
+            {
+                id: 'dice-table',
+                src: 'dice.png',
+                color: 'from-blue-900 to-slate-900',
+                title: "The Voice of the Cosmos",
+                narration: "Your fate rests upon these carved artifacts. They are not merely tools; they are the voice of the cosmos, speaking through numerical decree. Every action, every conflict, is mediated by their tumble."
+            },
+            {
+                id: 'd20-squirrels',
+                src: 'dice20.png',
+                color: 'from-emerald-900 to-teal-900',
+                title: "The Arbiter of Destiny",
+                narration: "The D20. When the moment of highest peril arrives, this die will hover, glowing with the concentrated energy of possibility. Its result is final, cementing the outcome that drives the narrative forward."
+            },
+            {
+                id: 'dm-fading',
+                src: 'DMswirls.png',
+                color: 'from-gray-900 to-black',
+                title: "Your Adventure Begins",
+                narration: "And so, the stage is set. I shed the illusion of chaos, revealing the guide ready to chart your course. The map is drawn, the rules are known, and the D20 awaits its first roll."
+            }
+        ];
+
+        // --- Components ---
+
+        function ImageWithFallback({ src, fallbackColor }) {
+            const [error, setError] = useState(false);
+
+            if (error) {
+                return (
+                    <div className={`w-full h-full bg-gradient-to-br ${fallbackColor}`} />
+                );
+            }
+
+            return (
+                <img 
+                    src={src} 
+                    alt="" 
+                    className="w-full h-full object-cover"
+                    onError={() => setError(true)}
+                />
+            );
+        }
+
+        function App() {
+            const [progress, setProgress] = useState(0);
+            const [isSnapping, setIsSnapping] = useState(false);
+            const snapTimeoutRef = useRef(null);
+            const animationRef = useRef(null);
+
+            // Handle Snapping Logic
+            const snapToNearest = (currentProgress) => {
+                const target = Math.round(currentProgress);
+                const start = currentProgress;
+                const distance = target - start;
+                const duration = 400; // ms to snap
+                const startTime = performance.now();
+
+                const animateSnap = (time) => {
+                    const elapsed = time - startTime;
+                    const t = Math.min(elapsed / duration, 1);
+                    
+                    // Ease out cubic function for smooth "slip"
+                    const easeOut = 1 - Math.pow(1 - t, 3);
+                    
+                    const newProgress = start + (distance * easeOut);
+                    setProgress(newProgress);
+
+                    if (t < 1) {
+                        animationRef.current = requestAnimationFrame(animateSnap);
+                    } else {
+                        setIsSnapping(false);
+                    }
+                };
+                
+                setIsSnapping(true);
+                animationRef.current = requestAnimationFrame(animateSnap);
+            };
+
+            // Mouse wheel handler
+            const handleWheel = (e) => {
+                if (isSnapping) return; // Don't interrupt snap (optional, or cancel snap)
+
+                // Cancel any pending snap
+                if (snapTimeoutRef.current) clearTimeout(snapTimeoutRef.current);
+                if (animationRef.current) cancelAnimationFrame(animationRef.current);
+
+                const sensitivity = 0.002; 
+                
+                setProgress(prev => {
+                    const next = prev + e.deltaY * sensitivity;
+                    return Math.min(Math.max(next, 0), STORY_STEPS.length - 1);
+                });
+
+                // Set new timeout to snap after scrolling stops
+                snapTimeoutRef.current = setTimeout(() => {
+                    // We need the *current* progress value. 
+                    // Since state updates are async, we trust the 'prev' logic was consistent,
+                    // but inside setTimeout we need a ref or functional update. 
+                    // Simplest here is to pass a value, but we can't easily get the fresh state in a stale closure.
+                    // So we trigger an effect or use a ref for 'currentProgress'.
+                    // To keep it clean, let's use the functional update of setProgress to trigger the snap logic externally 
+                    // or just use a ref to track current progress for the timeout.
+                    snapToNearest(progressRef.current); 
+                }, 150);
+            };
+
+            // Ref to track latest progress for the timeout closure
+            const progressRef = useRef(progress);
+            useEffect(() => {
+                progressRef.current = progress;
+            }, [progress]);
+
+            return (
+                <div className="fixed inset-0 bg-black overflow-hidden font-serif">
+                    
+                    {/* Full Screen Viewport */}
+                    <div 
+                        onWheel={handleWheel}
+                        className="absolute inset-0 w-full h-full cursor-ns-resize"
+                    >
+                        
+                        {/* Render Images */}
+                        {STORY_STEPS.map((step, index) => {
+                            const relativePos = progress - index;
+                            
+                            let scale = 1;
+                            let opacity = 1;
+                            let blur = 0;
+                            let zIndex = 100 - index;
+                            
+                            let isVisible = false;
+
+                            if (relativePos < -1) {
+                                isVisible = false;
+                            } else if (relativePos < 0) {
+                                isVisible = true;
+                                const entryProgress = relativePos + 1; 
+                                scale = 0.6 + (0.4 * entryProgress); 
+                                opacity = entryProgress; 
+                                blur = 10 * (1 - entryProgress);
+                            } else if (relativePos < 1) {
+                                isVisible = true;
+                                scale = 1 + (4 * relativePos); 
+                                opacity = 1 - Math.pow(relativePos, 2); 
+                                blur = 5 * relativePos; 
+                            } else {
+                                isVisible = false;
+                            }
+
+                            if (!isVisible) return null;
+
+                            const textOpacity = Math.max(0, 1 - Math.abs(relativePos * 2.5));
+
+                            return (
+                                <div
+                                    key={step.id}
+                                    className="absolute inset-0 w-full h-full flex items-center justify-center pointer-events-none"
+                                    style={{ zIndex }}
+                                >
+                                    <div 
+                                        className="relative w-full h-full flex items-center justify-center transition-transform duration-75 ease-linear will-change-transform"
+                                        style={{
+                                            opacity,
+                                            filter: `blur(${blur}px)`,
+                                            transform: `scale(${scale})`,
+                                            transformOrigin: 'center center'
+                                        }}
+                                    >
+                                        <ImageWithFallback 
+                                            src={step.src} 
+                                            fallbackColor={step.color}
+                                        />
+                                    </div>
+
+                                    {/* Narration Overlay */}
+                                    <div 
+                                        className="absolute bottom-0 left-0 right-0 p-8 pb-16 bg-gradient-to-t from-black via-black/70 to-transparent flex flex-col items-center justify-end text-center transition-opacity duration-300"
+                                        style={{ opacity: textOpacity }}
+                                    >
+                                        <div className="max-w-4xl space-y-4">
+                                            {/* Updated Title Font to Pirata One */}
+                                            <h2 className="text-4xl md:text-6xl text-amber-500 tracking-wide font-['Pirata_One'] drop-shadow-[0_4px_4px_rgba(0,0,0,1)]">
+                                                {step.title}
+                                            </h2>
+                                            {/* Updated Body Font to Alegreya */}
+                                            <p className="text-xl md:text-2xl text-gray-200 leading-relaxed font-['Alegreya'] drop-shadow-md">
+                                                {step.narration}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* The Fate Ledger (Vertical Navigation) */}
+                    <div className="absolute right-8 top-1/2 transform -translate-y-1/2 flex flex-col items-center gap-6 z-[150]">
+                        {/* Vertical Line */}
+                        <div className="absolute top-0 bottom-0 w-0.5 bg-white/20 rounded-full" />
+                        
+                        {/* Nodes */}
+                        {STORY_STEPS.map((step, index) => {
+                            // Check if this node is the "active" one (closest integer)
+                            const isActive = Math.round(progress) === index;
+                            
+                            return (
+                                <button
+                                    key={index}
+                                    onClick={() => snapToNearest(index + 0.01)} // Slight offset to trigger animation direction correctly if needed
+                                    className="relative group focus:outline-none"
+                                    aria-label={`Go to ${step.title}`}
+                                >
+                                    {/* The Node Dot */}
+                                    <div 
+                                        className={`
+                                            w-3 h-3 rounded-full border-2 transition-all duration-500 z-10 relative
+                                            ${isActive 
+                                                ? 'bg-amber-500 border-amber-500 scale-150 shadow-[0_0_10px_rgba(245,158,11,0.8)]' 
+                                                : 'bg-black border-white/50 group-hover:border-white group-hover:bg-white/20'
+                                            }
+                                        `} 
+                                    />
+                                    
+                                    {/* Tooltip (visible on hover) */}
+                                    <div className="absolute right-8 top-1/2 -translate-y-1/2 px-2 py-1 bg-black/80 text-white text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity rounded border border-white/10 pointer-events-none">
+                                        {step.title}
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
