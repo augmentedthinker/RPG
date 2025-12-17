@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Dungeon Master Journey</title>
     
     <!-- React & ReactDOM -->
@@ -17,8 +17,27 @@
 
     <style>
         body { margin: 0; padding: 0; overflow: hidden; background-color: black; }
+        /* Prevent pull-to-refresh on mobile */
+        body, #root { touch-action: none; } 
+        
         /* Custom fonts: Pirata One for titles (Edgy/Gothic), Alegreya for text (Literary/Legible) */
         @import url('https://fonts.googleapis.com/css2?family=Alegreya:wght@400;700&family=Pirata+One&display=swap');
+
+        /* Utility for hiding scrollbar */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Phone Rotation Animation */
+        @keyframes rotate-phone {
+            0%, 10% { transform: rotate(0deg); opacity: 1; }
+            40%, 60% { transform: rotate(-90deg); opacity: 1; }
+            90%, 100% { transform: rotate(-90deg); opacity: 0; }
+        }
     </style>
 </head>
 <body>
@@ -68,6 +87,106 @@
 
         // --- Components ---
 
+        // Simple SVG Icons for the buttons
+        const Icons = {
+            Maximize: () => (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3" /><path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+                    <path d="M3 16v3a2 2 0 0 0 2 2h3" /><path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+                </svg>
+            ),
+            Minimize: () => (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 3v3a2 2 0 0 1-2 2H3" /><path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+                    <path d="M3 16h3a2 2 0 0 1 2 2v3" /><path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+                </svg>
+            ),
+            Alert: () => (
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+            ),
+            QrCode: () => (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+            ),
+            Close: () => (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            )
+        };
+
+        function RotateOverlay() {
+            return (
+                <div className="fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center p-8 text-center touch-none">
+                    <div className="w-24 h-24 mb-8 relative flex items-center justify-center">
+                        {/* Phone Icon Animation */}
+                        <svg 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            viewBox="0 0 24 24" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            strokeWidth="2" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            className="w-16 h-16 text-amber-500"
+                            style={{ 
+                                animation: 'rotate-phone 2.5s ease-in-out infinite',
+                                transformOrigin: 'center' 
+                            }} 
+                        >
+                            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                            <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                        </svg>
+                    </div>
+                    <h2 className="text-3xl text-amber-500 font-['Pirata_One'] mb-4 tracking-wider">Turn Your Fate</h2>
+                    <p className="text-gray-400 font-['Alegreya'] text-xl max-w-md">
+                        The stars align only in the horizon. <br/>
+                        Please rotate your device to landscape to begin.
+                    </p>
+                </div>
+            );
+        }
+
+        function QRModal({ onClose }) {
+            const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://augmentedthinker.github.io/RPG/&bgcolor=ffffff";
+            
+            return (
+                <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+                    <div 
+                        className="bg-neutral-900 border border-amber-500/30 p-8 rounded-xl max-w-sm w-full flex flex-col items-center gap-6 shadow-2xl relative animate-in fade-in zoom-in duration-300"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <button 
+                            onClick={onClose}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+                        >
+                            <Icons.Close />
+                        </button>
+                        
+                        <div className="text-center space-y-2">
+                            <h3 className="text-2xl text-amber-500 font-['Pirata_One'] tracking-wide">Share the Journey</h3>
+                            <p className="text-gray-400 font-['Alegreya'] text-lg">Scan to enter the realm on mobile</p>
+                        </div>
+
+                        <div className="p-4 bg-white rounded-lg shadow-inner">
+                            <img src={qrUrl} alt="QR Code" className="w-48 h-48 md:w-64 md:h-64 object-contain" />
+                        </div>
+                        
+                        <p className="text-xs text-gray-600 font-mono">https://augmentedthinker.github.io/RPG/</p>
+                    </div>
+                </div>
+            );
+        }
+
         function ImageWithFallback({ src, fallbackColor }) {
             const [error, setError] = useState(false);
 
@@ -90,11 +209,98 @@
         function App() {
             const [progress, setProgress] = useState(0);
             const [isSnapping, setIsSnapping] = useState(false);
+            const [isFullscreen, setIsFullscreen] = useState(false);
+            const [toastMessage, setToastMessage] = useState(null);
+            const [isPortrait, setIsPortrait] = useState(false);
+            const [showQR, setShowQR] = useState(false);
+            
             const snapTimeoutRef = useRef(null);
             const animationRef = useRef(null);
+            const toastTimeoutRef = useRef(null);
+            
+            // Touch handling refs
+            const touchStartY = useRef(null);
+            const isTouching = useRef(false);
 
-            // Handle Snapping Logic
+            // Ref to track latest progress for the timeout closure
+            const progressRef = useRef(progress);
+            useEffect(() => {
+                progressRef.current = progress;
+            }, [progress]);
+
+            // --- Orientation Check ---
+            useEffect(() => {
+                const checkOrientation = () => {
+                    // Simple check: if Height > Width, we consider it portrait
+                    setIsPortrait(window.innerHeight > window.innerWidth);
+                };
+                
+                // Check immediately
+                checkOrientation();
+
+                // Listen for resize (covers orientation change on most devices)
+                window.addEventListener('resize', checkOrientation);
+                return () => window.removeEventListener('resize', checkOrientation);
+            }, []);
+
+            // --- Toast Logic ---
+            const showToast = (message) => {
+                setToastMessage(message);
+                if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+                toastTimeoutRef.current = setTimeout(() => {
+                    setToastMessage(null);
+                }, 3000);
+            };
+
+            // --- Fullscreen Logic ---
+            const toggleFullScreen = async () => {
+                try {
+                    if (!document.fullscreenElement) {
+                        // Handle standard and vendor-prefixed full screen requests
+                        if (document.documentElement.requestFullscreen) {
+                            await document.documentElement.requestFullscreen();
+                        } else if (document.documentElement.webkitRequestFullscreen) { // Safari
+                            await document.documentElement.webkitRequestFullscreen();
+                        } else if (document.documentElement.msRequestFullscreen) { // IE11
+                            await document.documentElement.msRequestFullscreen();
+                        } else {
+                            throw new Error("Fullscreen API not supported");
+                        }
+                        setIsFullscreen(true);
+                    } else {
+                        if (document.exitFullscreen) {
+                            await document.exitFullscreen();
+                        } else if (document.webkitExitFullscreen) {
+                            await document.webkitExitFullscreen();
+                        } else if (document.msExitFullscreen) {
+                            await document.msExitFullscreen();
+                        }
+                        setIsFullscreen(false);
+                    }
+                } catch (err) {
+                    // Suppress console error and show UI feedback instead
+                    console.log("Fullscreen toggle prevented:", err.message);
+                    showToast("Fullscreen not supported in this view");
+                }
+            };
+
+            // Listen for fullscreen changes (e.g. user pressing Escape)
+            useEffect(() => {
+                const handleFullscreenChange = () => {
+                    setIsFullscreen(!!document.fullscreenElement);
+                };
+                document.addEventListener('fullscreenchange', handleFullscreenChange);
+                document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+                return () => {
+                    document.removeEventListener('fullscreenchange', handleFullscreenChange);
+                    document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+                };
+            }, []);
+
+            // --- Snapping Logic ---
             const snapToNearest = (currentProgress) => {
+                if (isTouching.current) return; // Don't snap if user is still holding touch
+
                 const target = Math.round(currentProgress);
                 const start = currentProgress;
                 const distance = target - start;
@@ -122,9 +328,13 @@
                 animationRef.current = requestAnimationFrame(animateSnap);
             };
 
+            // --- Interaction Handlers ---
+
             // Mouse wheel handler
             const handleWheel = (e) => {
-                if (isSnapping) return; // Don't interrupt snap (optional, or cancel snap)
+                if (isPortrait) return; // Block interaction if in portrait mode
+                if (showQR) return; // Block interaction if modal is open
+                if (isSnapping) return; 
 
                 // Cancel any pending snap
                 if (snapTimeoutRef.current) clearTimeout(snapTimeoutRef.current);
@@ -139,30 +349,70 @@
 
                 // Set new timeout to snap after scrolling stops
                 snapTimeoutRef.current = setTimeout(() => {
-                    // We need the *current* progress value. 
-                    // Since state updates are async, we trust the 'prev' logic was consistent,
-                    // but inside setTimeout we need a ref or functional update. 
-                    // Simplest here is to pass a value, but we can't easily get the fresh state in a stale closure.
-                    // So we trigger an effect or use a ref for 'currentProgress'.
-                    // To keep it clean, let's use the functional update of setProgress to trigger the snap logic externally 
-                    // or just use a ref to track current progress for the timeout.
                     snapToNearest(progressRef.current); 
                 }, 150);
             };
 
-            // Ref to track latest progress for the timeout closure
-            const progressRef = useRef(progress);
-            useEffect(() => {
-                progressRef.current = progress;
-            }, [progress]);
+            // Touch Handlers
+            const handleTouchStart = (e) => {
+                if (isPortrait || showQR) return; // Block interaction
+                
+                // Cancel animations/snaps when user touches screen
+                if (snapTimeoutRef.current) clearTimeout(snapTimeoutRef.current);
+                if (animationRef.current) cancelAnimationFrame(animationRef.current);
+                setIsSnapping(false);
+
+                touchStartY.current = e.touches[0].clientY;
+                isTouching.current = true;
+            };
+
+            const handleTouchMove = (e) => {
+                if (isPortrait || showQR) return;
+                if (touchStartY.current === null) return;
+
+                const currentY = e.touches[0].clientY;
+                const deltaY = touchStartY.current - currentY; // Positive when swiping up (scrolling down)
+                
+                // Sensitivity for touch
+                const touchSensitivity = 0.004;
+
+                setProgress(prev => {
+                    const next = prev + deltaY * touchSensitivity;
+                    return Math.min(Math.max(next, 0), STORY_STEPS.length - 1);
+                });
+
+                touchStartY.current = currentY;
+            };
+
+            const handleTouchEnd = () => {
+                if (isPortrait || showQR) return;
+                touchStartY.current = null;
+                isTouching.current = false;
+                // Snap to nearest slide when finger leaves screen
+                snapToNearest(progressRef.current);
+            };
 
             return (
-                <div className="fixed inset-0 bg-black overflow-hidden font-serif">
+                <div className="fixed inset-0 bg-black overflow-hidden font-serif select-none">
                     
+                    {/* Render Orientation Warning if Portrait */}
+                    {isPortrait && <RotateOverlay />}
+
+                    {/* QR Modal */}
+                    {showQR && <QRModal onClose={() => setShowQR(false)} />}
+
                     {/* Full Screen Viewport */}
                     <div 
                         onWheel={handleWheel}
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
                         className="absolute inset-0 w-full h-full cursor-ns-resize"
+                        style={{
+                            // Optional: Blur background if portrait warning is up
+                            filter: isPortrait || showQR ? 'blur(10px)' : 'none',
+                            transition: 'filter 0.5s ease'
+                        }}
                     >
                         
                         {/* Render Images */}
@@ -220,7 +470,7 @@
 
                                     {/* Narration Overlay */}
                                     <div 
-                                        className="absolute bottom-0 left-0 right-0 p-8 pb-16 bg-gradient-to-t from-black via-black/70 to-transparent flex flex-col items-center justify-end text-center transition-opacity duration-300"
+                                        className="absolute bottom-0 left-0 right-0 p-8 pb-20 md:pb-16 bg-gradient-to-t from-black via-black/70 to-transparent flex flex-col items-center justify-end text-center transition-opacity duration-300"
                                         style={{ opacity: textOpacity }}
                                     >
                                         <div className="max-w-4xl space-y-4">
@@ -239,42 +489,76 @@
                         })}
                     </div>
 
-                    {/* The Fate Ledger (Vertical Navigation) */}
-                    <div className="absolute right-8 top-1/2 transform -translate-y-1/2 flex flex-col items-center gap-6 z-[150]">
-                        {/* Vertical Line */}
-                        <div className="absolute top-0 bottom-0 w-0.5 bg-white/20 rounded-full" />
-                        
-                        {/* Nodes */}
-                        {STORY_STEPS.map((step, index) => {
-                            // Check if this node is the "active" one (closest integer)
-                            const isActive = Math.round(progress) === index;
-                            
-                            return (
-                                <button
-                                    key={index}
-                                    onClick={() => snapToNearest(index + 0.01)} // Slight offset to trigger animation direction correctly if needed
-                                    className="relative group focus:outline-none"
-                                    aria-label={`Go to ${step.title}`}
+                    {/* UI Layer (Buttons & Nav) - Hide if Portrait Mode to reduce clutter */}
+                    {!isPortrait && (
+                        <>
+                            {/* Controls Container (Top Left) */}
+                            <div className="absolute top-6 left-6 z-[160] flex flex-col gap-4">
+                                {/* Fullscreen Toggle Button */}
+                                <button 
+                                    onClick={toggleFullScreen}
+                                    className="p-3 bg-black/50 hover:bg-amber-600/80 text-white rounded-full border border-white/20 transition-all duration-300 backdrop-blur-sm group shadow-lg"
+                                    title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
                                 >
-                                    {/* The Node Dot */}
-                                    <div 
-                                        className={`
-                                            w-3 h-3 rounded-full border-2 transition-all duration-500 z-10 relative
-                                            ${isActive 
-                                                ? 'bg-amber-500 border-amber-500 scale-150 shadow-[0_0_10px_rgba(245,158,11,0.8)]' 
-                                                : 'bg-black border-white/50 group-hover:border-white group-hover:bg-white/20'
-                                            }
-                                        `} 
-                                    />
-                                    
-                                    {/* Tooltip (visible on hover) */}
-                                    <div className="absolute right-8 top-1/2 -translate-y-1/2 px-2 py-1 bg-black/80 text-white text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity rounded border border-white/10 pointer-events-none">
-                                        {step.title}
-                                    </div>
+                                    {isFullscreen ? <Icons.Minimize /> : <Icons.Maximize />}
                                 </button>
-                            );
-                        })}
-                    </div>
+                                
+                                {/* QR Code Button */}
+                                <button 
+                                    onClick={() => setShowQR(true)}
+                                    className="p-3 bg-black/50 hover:bg-amber-600/80 text-white rounded-full border border-white/20 transition-all duration-300 backdrop-blur-sm group shadow-lg"
+                                    title="Share / Mobile Link"
+                                >
+                                    <Icons.QrCode />
+                                </button>
+                            </div>
+
+                            {/* Toast Notification */}
+                            <div className={`absolute top-20 left-20 z-[170] transition-opacity duration-300 ${toastMessage ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                                <div className="bg-neutral-900/90 text-white px-4 py-2 rounded-lg border border-amber-500/30 flex items-center gap-2 text-sm shadow-xl backdrop-blur-md">
+                                    <Icons.Alert />
+                                    {toastMessage}
+                                </div>
+                            </div>
+
+                            {/* The Fate Ledger (Vertical Navigation) */}
+                            <div className="absolute right-4 md:right-8 top-1/2 transform -translate-y-1/2 flex flex-col items-center gap-6 z-[150]">
+                                {/* Vertical Line */}
+                                <div className="absolute top-0 bottom-0 w-0.5 bg-white/20 rounded-full" />
+                                
+                                {/* Nodes */}
+                                {STORY_STEPS.map((step, index) => {
+                                    // Check if this node is the "active" one (closest integer)
+                                    const isActive = Math.round(progress) === index;
+                                    
+                                    return (
+                                        <button
+                                            key={index}
+                                            onClick={() => snapToNearest(index + 0.01)} 
+                                            className="relative group focus:outline-none p-2"
+                                            aria-label={`Go to ${step.title}`}
+                                        >
+                                            {/* The Node Dot */}
+                                            <div 
+                                                className={`
+                                                    w-3 h-3 rounded-full border-2 transition-all duration-500 z-10 relative
+                                                    ${isActive 
+                                                        ? 'bg-amber-500 border-amber-500 scale-150 shadow-[0_0_10px_rgba(245,158,11,0.8)]' 
+                                                        : 'bg-black border-white/50 group-hover:border-white group-hover:bg-white/20'
+                                                    }
+                                                `} 
+                                            />
+                                            
+                                            {/* Tooltip (visible on hover) */}
+                                            <div className="hidden md:block absolute right-8 top-1/2 -translate-y-1/2 px-2 py-1 bg-black/80 text-white text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity rounded border border-white/10 pointer-events-none">
+                                                {step.title}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    )}
 
                 </div>
             );
@@ -284,4 +568,4 @@
         root.render(<App />);
     </script>
 </body>
-</html>
+    </html>
